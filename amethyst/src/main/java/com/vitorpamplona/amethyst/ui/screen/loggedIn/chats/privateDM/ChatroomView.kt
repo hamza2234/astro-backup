@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -333,13 +334,28 @@ fun ChatroomViewUI(
     ) {
         Box(Modifier.fillMaxHeight()) {
             if (palette != null) {
+                val wallpaperScrim = if (MaterialTheme.colorScheme.isLight) 0.12f else 0.18f
+                Box(Modifier.fillMaxSize().background(palette.background))
                 Image(
                     painter = painterResource(palette.wallpaper),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.28f)))
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = wallpaperScrim)))
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.10f),
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.22f),
+                                ),
+                            ),
+                        ),
+                )
             }
             Column(
                 Modifier.fillMaxHeight(),

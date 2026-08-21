@@ -20,13 +20,22 @@
  */
 package com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.feed.layouts
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.feed.LocalMessengerDmStyle
 import com.vitorpamplona.amethyst.ui.theme.DividerThickness
 import com.vitorpamplona.amethyst.ui.theme.Font14SP
 import com.vitorpamplona.amethyst.ui.theme.HalfPadding
@@ -34,6 +43,30 @@ import com.vitorpamplona.amethyst.ui.theme.StdPadding
 
 @Composable
 fun ChatDivisor(info: String) {
+    if (LocalMessengerDmStyle.current) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = info,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = Font14SP,
+                color = Color.White.copy(alpha = 0.88f),
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Black.copy(alpha = 0.30f))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+            )
+        }
+        return
+    }
+
     Row(verticalAlignment = Alignment.CenterVertically, modifier = StdPadding) {
         HorizontalDivider(
             modifier = Modifier.weight(1f),

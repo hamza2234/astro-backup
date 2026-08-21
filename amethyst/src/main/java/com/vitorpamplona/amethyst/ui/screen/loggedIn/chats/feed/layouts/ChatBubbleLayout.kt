@@ -84,8 +84,6 @@ import com.vitorpamplona.amethyst.ui.theme.chatBubbleMe
 import com.vitorpamplona.amethyst.ui.theme.chatBubbleThem
 import com.vitorpamplona.amethyst.ui.theme.chatDraftBackground
 import com.vitorpamplona.amethyst.ui.theme.messageBubbleLimits
-import com.vitorpamplona.amethyst.ui.theme.messengerBubbleMe
-import com.vitorpamplona.amethyst.ui.theme.messengerBubbleThem
 import com.vitorpamplona.amethyst.ui.theme.placeholderText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -141,16 +139,17 @@ fun ChatBubbleLayout(
     inner: @Composable (MutableState<Color>) -> Unit,
 ) {
     val messengerPalette = LocalMessengerChatPalette.current
+    val messengerStyle = LocalMessengerDmStyle.current
     val loggedInColors =
         when {
             messengerPalette != null -> messengerPalette.me
-            LocalMessengerDmStyle.current -> MaterialTheme.colorScheme.messengerBubbleMe
+            messengerStyle -> Color(0xFF213D38)
             else -> MaterialTheme.colorScheme.chatBubbleMe
         }
     val otherColors =
         when {
             messengerPalette != null -> messengerPalette.them
-            LocalMessengerDmStyle.current -> MaterialTheme.colorScheme.messengerBubbleThem
+            messengerStyle -> Color(0xFF64F8C8)
             else -> MaterialTheme.colorScheme.chatBubbleThem
         }
     val defaultBackground = MaterialTheme.colorScheme.background
@@ -201,7 +200,6 @@ fun ChatBubbleLayout(
     val swipeThresholdPx = remember(density) { with(density) { SwipeReplyThreshold.toPx() } }
     val swipeMaxPx = remember(density) { with(density) { SwipeReplyMaxDrag.toPx() } }
 
-    val messengerStyle = LocalMessengerDmStyle.current
     Box(
         modifier =
             when {
@@ -209,11 +207,11 @@ fun ChatBubbleLayout(
                 messengerStyle && groupPosition.isConnectedAbove ->
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 8.dp, end = 12.dp, top = 1.dp, bottom = 1.dp)
+                        .padding(start = 6.dp, end = 6.dp, top = 1.dp, bottom = 1.dp)
                 messengerStyle ->
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 1.dp)
+                        .padding(start = 6.dp, end = 6.dp, top = 7.dp, bottom = 1.dp)
                 groupPosition.isConnectedAbove -> ChatPaddingGroupedModifier
                 else -> ChatPaddingModifier
             },
@@ -382,18 +380,33 @@ private fun InnerChatBubble(
                     },
             )
         }
+    val messengerStyle = LocalMessengerDmStyle.current
+
+    val bubbleWidthModifier =
+        when {
+            innerQuote -> Modifier
+            messengerStyle -> Modifier.fillMaxWidth(0.74f)
+            else -> ChatBubbleMaxSizeModifier
+        }
 
     Column(
         horizontalAlignment = if (isLoggedInUser) Alignment.End else Alignment.Start,
         // Negative spacing pulls the reaction chips up so their vertical center
         // rides the bubble's bottom border instead of floating detached below it.
         verticalArrangement = if (reactionsRow != null) ChatChipOverlapArrangement else Arrangement.Top,
-        modifier = if (innerQuote) Modifier else ChatBubbleMaxSizeModifier,
+        modifier = bubbleWidthModifier,
     ) {
         Surface(
             // Jumbo emoji show bare; the scroll-to highlight still tints them.
             color = if (transparentBubble && !highlightActive) Color.Transparent else animatedColor,
+            contentColor =
+                if (messengerStyle) {
+                    if (isLoggedInUser) Color.White else Color(0xFF062720)
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
             shape = chatBubbleShapeFor(isLoggedInUser, if (innerQuote) ChatGroupPosition.SINGLE else groupPosition),
+            shadowElevation = if (messengerStyle && !transparentBubble) 1.dp else 0.dp,
             modifier =
                 clickableModifier.graphicsLayer {
                     scaleX = pressScale

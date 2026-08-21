@@ -24,12 +24,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,27 +39,40 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.amethyst.R
+import com.vitorpamplona.amethyst.commons.icons.symbols.Icon
+import com.vitorpamplona.amethyst.commons.icons.symbols.MaterialSymbol
+import com.vitorpamplona.amethyst.commons.icons.symbols.MaterialSymbols
 import com.vitorpamplona.amethyst.model.LocalCache
 import com.vitorpamplona.amethyst.model.User
 import com.vitorpamplona.amethyst.ui.actions.MentionPreservingInputTransformation
 import com.vitorpamplona.amethyst.ui.actions.StrippingFailureDialog
 import com.vitorpamplona.amethyst.ui.actions.UrlUserTagOutputTransformation
+import com.vitorpamplona.amethyst.ui.actions.uploads.FileSelect
+import com.vitorpamplona.amethyst.ui.actions.uploads.GallerySelect
 import com.vitorpamplona.amethyst.ui.actions.uploads.SelectFromGallery
 import com.vitorpamplona.amethyst.ui.actions.uploads.SelectedMedia
+import com.vitorpamplona.amethyst.ui.actions.uploads.TakePicture
 import com.vitorpamplona.amethyst.ui.components.ThinPaddingTextField
 import com.vitorpamplona.amethyst.ui.navigation.bottombars.KeyboardAwareBackHandler
 import com.vitorpamplona.amethyst.ui.navigation.navs.EmptyNav
@@ -72,6 +87,7 @@ import com.vitorpamplona.amethyst.ui.screen.loggedIn.AccountViewModel
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.feed.LocalMessengerDmStyle
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.feed.LocalMessengerLikeReaction
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.privateDM.send.upload.RoomChatFileUploadDialog
+import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.privateDM.theme.LocalMessengerChatPalette
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.utils.DisplayReplyingToNote
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.utils.ThinSendButton
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.mockAccountViewModel
@@ -159,9 +175,23 @@ fun PrivateMessageEditFieldRow(
         )
     }
 
-    Column(
-        modifier = EditFieldModifier,
-    ) {
+    val messengerStyle = LocalMessengerDmStyle.current
+    val messengerPalette = LocalMessengerChatPalette.current
+    val composerModifier =
+        if (messengerStyle) {
+            val composerColor =
+                (messengerPalette?.accent ?: Color(0xFF55F5C6))
+                    .copy(alpha = 0.20f)
+                    .compositeOver(Color(0xFF062720))
+            Modifier
+                .fillMaxWidth()
+                .background(composerColor)
+                .padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 8.dp)
+        } else {
+            EditFieldModifier
+        }
+
+    Column(modifier = composerModifier) {
         channelScreenModel.userSuggestions?.let {
             ShowUserSuggestionList(
                 it,
@@ -211,6 +241,18 @@ fun EditField(
     onSendNewMessage: () -> Unit,
     accountViewModel: AccountViewModel,
 ) {
+    val messengerStyle = LocalMessengerDmStyle.current
+    val messengerPalette = LocalMessengerChatPalette.current
+    if (messengerStyle) {
+        MessengerEditField(
+            channelScreenModel = channelScreenModel,
+            onSendNewMessage = onSendNewMessage,
+            accountViewModel = accountViewModel,
+            accent = messengerPalette?.accent ?: Color(0xFF55F5C6),
+        )
+        return
+    }
+
     ThinPaddingTextField(
         state = channelScreenModel.message,
         onTextChanged = { channelScreenModel.onMessageChanged() },
@@ -238,21 +280,6 @@ fun EditField(
                         onSendNewMessage()
                     }
                 }
-                val messengerStyle = LocalMessengerDmStyle.current
-                val likeEmoji = LocalMessengerLikeReaction.current
-                if (messengerStyle) {
-                    IconButton(
-                        enabled = accountViewModel.isWriteable(),
-                        onClick = {
-                            accountViewModel.launchSigner {
-                                channelScreenModel.sendQuickEmoji(likeEmoji)
-                                onSendNewMessage()
-                            }
-                        },
-                    ) {
-                        Text(text = likeEmoji, fontSize = 18.sp)
-                    }
-                }
             }
         },
         leadingIcon = {
@@ -263,8 +290,260 @@ fun EditField(
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
             ),
+        contentPadding =
+            PaddingValues(start = 10.dp, top = 12.dp, end = 10.dp, bottom = 12.dp),
         outputTransformation = UrlUserTagOutputTransformation(MaterialTheme.colorScheme.primary),
     )
+}
+
+@Composable
+private fun MessengerEditField(
+    channelScreenModel: ChatNewMessageViewModel,
+    onSendNewMessage: () -> Unit,
+    accountViewModel: AccountViewModel,
+    accent: Color,
+) {
+    val fieldColor = accent.copy(alpha = 0.16f).compositeOver(Color(0xFF09241F))
+    val isTyping = channelScreenModel.message.text.isNotBlank()
+
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            MessengerFileButton(
+                enabled = !channelScreenModel.isUploadingFile && !channelScreenModel.isUploadingImage,
+                tint = accent,
+                onFilesChosen = channelScreenModel::pickedMedia,
+            )
+
+            MessengerCameraButton(
+                enabled = !channelScreenModel.isUploadingFile && !channelScreenModel.isUploadingImage,
+                tint = accent,
+                onPictureTaken = channelScreenModel::pickedMedia,
+            )
+
+            MessengerGalleryButton(
+                enabled = !channelScreenModel.isUploadingFile && !channelScreenModel.isUploadingImage,
+                tint = accent,
+                onImageChosen = channelScreenModel::pickedMedia,
+            )
+
+            MessengerStaticIcon(
+                symbol = MaterialSymbols.Mic,
+                tint = accent,
+            )
+
+            ThinPaddingTextField(
+                state = channelScreenModel.message,
+                onTextChanged = { channelScreenModel.onMessageChanged() },
+                onContentReceived = { uri, mimeType ->
+                    channelScreenModel.pickedMedia(persistentListOf(SelectedMedia(uri, mimeType)))
+                },
+                inputTransformation = MentionPreservingInputTransformation,
+                keyboardOptions = PostKeyboard,
+                shape = RoundedCornerShape(26.dp),
+                modifier = Modifier.weight(1f),
+                placeholder = {
+                    Text(
+                        text = stringRes(R.string.reply_here),
+                        color = Color.White.copy(alpha = 0.54f),
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        symbol = MaterialSymbols.EmojiEmotions,
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier.size(22.dp),
+                    )
+                },
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = fieldColor,
+                        unfocusedContainerColor = fieldColor,
+                        disabledContainerColor = fieldColor.copy(alpha = 0.6f),
+                        cursorColor = accent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                    ),
+                contentPadding = PaddingValues(start = 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
+                outputTransformation = UrlUserTagOutputTransformation(accent),
+            )
+
+            if (isTyping) {
+                MessengerSendButton(
+                    accent = accent,
+                    enabled = channelScreenModel.canPost(),
+                ) {
+                    accountViewModel.launchSigner {
+                        channelScreenModel.sendPostSync()
+                        onSendNewMessage()
+                    }
+                }
+            } else {
+                val likeEmoji = LocalMessengerLikeReaction.current
+                IconButton(
+                    enabled = accountViewModel.isWriteable(),
+                    modifier =
+                        Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF123F3B)),
+                    onClick = {
+                        accountViewModel.launchSigner {
+                            channelScreenModel.sendQuickEmoji(likeEmoji)
+                            onSendNewMessage()
+                        }
+                    },
+                ) {
+                    Text(text = likeEmoji, fontSize = 20.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessengerFileButton(
+    enabled: Boolean,
+    tint: Color,
+    onFilesChosen: (ImmutableList<SelectedMedia>) -> Unit,
+) {
+    var showFileSelect by remember { mutableStateOf(false) }
+    if (showFileSelect) {
+        FileSelect { files ->
+            showFileSelect = false
+            if (files.isNotEmpty()) {
+                onFilesChosen(files)
+            }
+        }
+    }
+
+    MessengerToolbarIcon(
+        symbol = MaterialSymbols.Add,
+        contentDescription = stringRes(id = R.string.upload_file),
+        enabled = enabled,
+        tint = tint,
+        onClick = { showFileSelect = true },
+    )
+}
+
+@Composable
+private fun MessengerCameraButton(
+    enabled: Boolean,
+    tint: Color,
+    onPictureTaken: (ImmutableList<SelectedMedia>) -> Unit,
+) {
+    var showCamera by remember { mutableStateOf(false) }
+    if (showCamera) {
+        TakePicture { media ->
+            showCamera = false
+            if (media.isNotEmpty()) {
+                onPictureTaken(media)
+            }
+        }
+    }
+
+    MessengerToolbarIcon(
+        symbol = MaterialSymbols.CameraAlt,
+        contentDescription = stringRes(id = R.string.take_a_picture),
+        enabled = enabled,
+        tint = tint,
+        onClick = { showCamera = true },
+    )
+}
+
+@Composable
+private fun MessengerGalleryButton(
+    enabled: Boolean,
+    tint: Color,
+    onImageChosen: (ImmutableList<SelectedMedia>) -> Unit,
+) {
+    var showGallerySelect by remember { mutableStateOf(false) }
+    if (showGallerySelect) {
+        GallerySelect { media ->
+            showGallerySelect = false
+            if (media.isNotEmpty()) {
+                onImageChosen(media)
+            }
+        }
+    }
+
+    MessengerToolbarIcon(
+        symbol = MaterialSymbols.Image,
+        contentDescription = stringRes(id = R.string.upload_image),
+        enabled = enabled,
+        tint = tint,
+        onClick = { showGallerySelect = true },
+    )
+}
+
+@Composable
+private fun MessengerToolbarIcon(
+    symbol: MaterialSymbol,
+    contentDescription: String,
+    enabled: Boolean,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        enabled = enabled,
+        onClick = onClick,
+        modifier = Modifier.size(38.dp),
+    ) {
+        Icon(
+            symbol = symbol,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(23.dp),
+            tint = if (enabled) tint else tint.copy(alpha = 0.38f),
+        )
+    }
+}
+
+@Composable
+private fun MessengerStaticIcon(
+    symbol: MaterialSymbol,
+    tint: Color,
+) {
+    IconButton(
+        enabled = false,
+        onClick = {},
+        modifier = Modifier.size(38.dp),
+    ) {
+        Icon(
+            symbol = symbol,
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = tint.copy(alpha = 0.62f),
+        )
+    }
+}
+
+@Composable
+private fun MessengerSendButton(
+    accent: Color,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        enabled = enabled,
+        modifier =
+            Modifier
+                .size(46.dp)
+                .clip(CircleShape)
+                .background(if (enabled) accent else Color(0xFF123F3B)),
+        onClick = onClick,
+    ) {
+        Icon(
+            symbol = MaterialSymbols.AutoMirrored.Send,
+            contentDescription = stringRes(id = R.string.accessibility_send),
+            modifier = Modifier.size(22.dp),
+            tint = if (enabled) Color(0xFF062720) else accent.copy(alpha = 0.48f),
+        )
+    }
 }
 
 @Preview
@@ -356,13 +635,14 @@ fun KeyboardLeadingIcon(
     channelScreenModel: ChatNewMessageViewModel,
     accountViewModel: AccountViewModel,
 ) {
+    val messengerPalette = LocalMessengerChatPalette.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(start = 4.dp, end = 4.dp),
     ) {
         SelectFromGallery(
             isUploading = channelScreenModel.isUploadingImage,
-            tint = MaterialTheme.colorScheme.placeholderText,
+            tint = messengerPalette?.accent ?: MaterialTheme.colorScheme.placeholderText,
             modifier = Modifier,
             onImageChosen = channelScreenModel::pickedMedia,
         )
