@@ -54,10 +54,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vitorpamplona.amethyst.R
 import com.vitorpamplona.amethyst.commons.icons.symbols.Icon
@@ -72,13 +75,14 @@ import com.vitorpamplona.amethyst.ui.note.NonClickableUserPictures
 import com.vitorpamplona.amethyst.ui.note.ShowFollowingOrUnfollowingButton
 import com.vitorpamplona.amethyst.ui.note.UserCompose
 import com.vitorpamplona.amethyst.ui.note.UsernameDisplay
+import com.vitorpamplona.amethyst.ui.note.lastSeenSentence
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.AccountViewModel
+import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.privateDM.theme.resolveMessengerChatPalette
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.rooms.LoadUser
 import com.vitorpamplona.amethyst.ui.stringRes
 import com.vitorpamplona.amethyst.ui.theme.DividerThickness
 import com.vitorpamplona.amethyst.ui.theme.DoubleHorzSpacer
 import com.vitorpamplona.amethyst.ui.theme.Size34dp
-import com.vitorpamplona.amethyst.ui.theme.Size40dp
 import com.vitorpamplona.amethyst.ui.theme.StdPadding
 import com.vitorpamplona.amethyst.ui.theme.ZeroPadding
 import com.vitorpamplona.amethyst.ui.theme.isLight
@@ -163,10 +167,14 @@ private fun MessengerPeerTopBar(
             accountViewModel.account.chatroomList.getOrCreatePrivateChatroom(room)
         }
     val themeId by chatroom.sharedThemeId.collectAsStateWithLifecycle()
+    val readUntilByAuthor by chatroom.readUntilByAuthor.collectAsStateWithLifecycle()
+    val peerSeenUntil = readUntilByAuthor[room.users.first()] ?: 0L
+    val context = LocalContext.current
     val reactions = accountViewModel.reactionChoices()
-    val topBarColor = if (MaterialTheme.colorScheme.isLight) Color(0xFF075E54) else Color(0xFF062720)
+    val palette = resolveMessengerChatPalette(themeId, MaterialTheme.colorScheme.isLight)
+    val topBarColor = palette.accent.copy(alpha = 0.34f).compositeOver(Color(0xFF062720))
     val topBarContentColor = Color(0xFFE9FFF7)
-    val topBarActionColor = Color(0xFF55F5C6)
+    val topBarActionColor = palette.accent
 
     Column {
         ShorterTopAppBar(
@@ -183,47 +191,79 @@ private fun MessengerPeerTopBar(
             title = {
                 LoadUser(baseUserHex = room.users.first(), accountViewModel) { baseUser ->
                     if (baseUser != null) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showStrip = !showStrip },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             ClickableUserPicture(
                                 baseUser = baseUser,
                                 accountViewModel = accountViewModel,
-                                size = Size40dp,
+                                size = 42.dp,
                             )
                             Spacer(modifier = DoubleHorzSpacer)
-                            UsernameDisplay(
-                                baseUser,
-                                Modifier
-                                    .weight(1f)
-                                    .clickable { showStrip = !showStrip },
-                                fontWeight = FontWeight.SemiBold,
-                                textColor = topBarContentColor,
-                                accountViewModel = accountViewModel,
-                            )
-                            if (onVideoCallClick != null) {
-                                IconButton(
-                                    onClick = { onVideoCallClick(baseUser.pubkeyHex) },
-                                    modifier = Modifier.size(40.dp),
-                                ) {
-                                    Icon(
-                                        symbol = MaterialSymbols.Videocam,
-                                        contentDescription = stringRes(R.string.call_video),
-                                        tint = topBarActionColor,
-                                        modifier = Modifier.size(20.dp),
+                            Column(Modifier.weight(1f)) {
+                                UsernameDisplay(
+                                    baseUser,
+                                    Modifier.fillMaxWidth(),
+                                    fontWeight = FontWeight.SemiBold,
+                                    textColor = topBarContentColor,
+                                    accountViewModel = accountViewModel,
+                                )
+                                if (peerSeenUntil > 0L) {
+                                    Text(
+                                        text = lastSeenSentence(peerSeenUntil, context),
+                                        color = topBarContentColor.copy(alpha = 0.68f),
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                 }
                             }
-                            if (onCallClick != null) {
-                                IconButton(
-                                    onClick = { onCallClick(baseUser.pubkeyHex) },
-                                    modifier = Modifier.size(40.dp),
-                                ) {
-                                    Icon(
-                                        symbol = MaterialSymbols.Call,
-                                        contentDescription = stringRes(R.string.call_voice),
-                                        tint = topBarActionColor,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
+                        }
+                    }
+                }
+            },
+            actions = {
+                LoadUser(baseUserHex = room.users.first(), accountViewModel) { baseUser ->
+                    if (baseUser != null) {
+                        IconButton(
+                            onClick = { showStrip = !showStrip },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                symbol = MaterialSymbols.Info,
+                                contentDescription = stringRes(R.string.chat_peer_options),
+                                tint = topBarActionColor,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                        if (onVideoCallClick != null) {
+                            IconButton(
+                                onClick = { onVideoCallClick(baseUser.pubkeyHex) },
+                                modifier = Modifier.size(40.dp),
+                            ) {
+                                Icon(
+                                    symbol = MaterialSymbols.Videocam,
+                                    contentDescription = stringRes(R.string.call_video),
+                                    tint = topBarActionColor,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                        }
+                        if (onCallClick != null) {
+                            IconButton(
+                                onClick = { onCallClick(baseUser.pubkeyHex) },
+                                modifier = Modifier.size(40.dp),
+                            ) {
+                                Icon(
+                                    symbol = MaterialSymbols.Call,
+                                    contentDescription = stringRes(R.string.call_voice),
+                                    tint = topBarActionColor,
+                                    modifier = Modifier.size(22.dp),
+                                )
                             }
                         }
                     }

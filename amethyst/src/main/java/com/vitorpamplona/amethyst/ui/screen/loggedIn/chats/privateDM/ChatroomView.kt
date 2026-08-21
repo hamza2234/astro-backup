@@ -334,7 +334,7 @@ fun ChatroomViewUI(
     ) {
         Box(Modifier.fillMaxHeight()) {
             if (palette != null) {
-                val wallpaperScrim = if (MaterialTheme.colorScheme.isLight) 0.18f else 0.36f
+                val wallpaperScrim = if (MaterialTheme.colorScheme.isLight) 0.12f else 0.18f
                 Box(Modifier.fillMaxSize().background(palette.background))
                 Image(
                     painter = painterResource(palette.wallpaper),
@@ -349,9 +349,9 @@ fun ChatroomViewUI(
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    Color.Black.copy(alpha = 0.18f),
+                                    Color.Black.copy(alpha = 0.10f),
                                     Color.Transparent,
-                                    Color.Black.copy(alpha = 0.28f),
+                                    Color.Black.copy(alpha = 0.22f),
                                 ),
                             ),
                         ),
