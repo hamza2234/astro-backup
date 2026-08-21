@@ -24,12 +24,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +74,7 @@ import com.vitorpamplona.amethyst.ui.screen.loggedIn.AccountViewModel
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.feed.LocalMessengerDmStyle
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.feed.LocalMessengerLikeReaction
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.privateDM.send.upload.RoomChatFileUploadDialog
+import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.privateDM.theme.LocalMessengerChatPalette
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.utils.DisplayReplyingToNote
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.chats.utils.ThinSendButton
 import com.vitorpamplona.amethyst.ui.screen.loggedIn.mockAccountViewModel
@@ -85,6 +88,7 @@ import com.vitorpamplona.amethyst.ui.theme.Size25dp
 import com.vitorpamplona.amethyst.ui.theme.SpacedBy10dp
 import com.vitorpamplona.amethyst.ui.theme.SuggestionListDefaultHeightChat
 import com.vitorpamplona.amethyst.ui.theme.ThemeComparisonColumn
+import com.vitorpamplona.amethyst.ui.theme.isLight
 import com.vitorpamplona.amethyst.ui.theme.placeholderText
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -159,9 +163,21 @@ fun PrivateMessageEditFieldRow(
         )
     }
 
-    Column(
-        modifier = EditFieldModifier,
-    ) {
+    val messengerStyle = LocalMessengerDmStyle.current
+    val composerModifier =
+        if (messengerStyle) {
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    Color.Black.copy(
+                        alpha = if (MaterialTheme.colorScheme.isLight) 0.08f else 0.22f,
+                    ),
+                ).padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp)
+        } else {
+            EditFieldModifier
+        }
+
+    Column(modifier = composerModifier) {
         channelScreenModel.userSuggestions?.let {
             ShowUserSuggestionList(
                 it,
@@ -211,6 +227,15 @@ fun EditField(
     onSendNewMessage: () -> Unit,
     accountViewModel: AccountViewModel,
 ) {
+    val messengerStyle = LocalMessengerDmStyle.current
+    val messengerPalette = LocalMessengerChatPalette.current
+    val messengerFieldColor =
+        if (MaterialTheme.colorScheme.isLight) {
+            Color.White.copy(alpha = 0.94f)
+        } else {
+            Color(0xFF102A24).copy(alpha = 0.94f)
+        }
+
     ThinPaddingTextField(
         state = channelScreenModel.message,
         onTextChanged = { channelScreenModel.onMessageChanged() },
@@ -219,7 +244,7 @@ fun EditField(
         },
         inputTransformation = MentionPreservingInputTransformation,
         keyboardOptions = PostKeyboard,
-        shape = EditFieldBorder,
+        shape = if (messengerStyle) RoundedCornerShape(28.dp) else EditFieldBorder,
         modifier = Modifier.fillMaxWidth(),
         placeholder = {
             Text(
@@ -238,11 +263,18 @@ fun EditField(
                         onSendNewMessage()
                     }
                 }
-                val messengerStyle = LocalMessengerDmStyle.current
                 val likeEmoji = LocalMessengerLikeReaction.current
                 if (messengerStyle) {
                     IconButton(
                         enabled = accountViewModel.isWriteable(),
+                        modifier =
+                            Modifier
+                                .padding(end = 2.dp)
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    (messengerPalette?.accent ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.12f),
+                                ),
                         onClick = {
                             accountViewModel.launchSigner {
                                 channelScreenModel.sendQuickEmoji(likeEmoji)
@@ -259,10 +291,28 @@ fun EditField(
             KeyboardLeadingIcon(channelScreenModel, accountViewModel)
         },
         colors =
-            TextFieldDefaults.colors(
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
+            if (messengerStyle) {
+                TextFieldDefaults.colors(
+                    focusedContainerColor = messengerFieldColor,
+                    unfocusedContainerColor = messengerFieldColor,
+                    disabledContainerColor = messengerFieldColor.copy(alpha = 0.6f),
+                    cursorColor = messengerPalette?.accent ?: MaterialTheme.colorScheme.primary,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                )
+            } else {
+                TextFieldDefaults.colors(
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                )
+            },
+        contentPadding =
+            if (messengerStyle) {
+                PaddingValues(start = 6.dp, top = 8.dp, end = 4.dp, bottom = 8.dp)
+            } else {
+                PaddingValues(start = 10.dp, top = 12.dp, end = 10.dp, bottom = 12.dp)
+            },
         outputTransformation = UrlUserTagOutputTransformation(MaterialTheme.colorScheme.primary),
     )
 }
@@ -356,13 +406,14 @@ fun KeyboardLeadingIcon(
     channelScreenModel: ChatNewMessageViewModel,
     accountViewModel: AccountViewModel,
 ) {
+    val messengerPalette = LocalMessengerChatPalette.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(start = 4.dp, end = 4.dp),
     ) {
         SelectFromGallery(
             isUploading = channelScreenModel.isUploadingImage,
-            tint = MaterialTheme.colorScheme.placeholderText,
+            tint = messengerPalette?.accent ?: MaterialTheme.colorScheme.placeholderText,
             modifier = Modifier,
             onImageChosen = channelScreenModel::pickedMedia,
         )

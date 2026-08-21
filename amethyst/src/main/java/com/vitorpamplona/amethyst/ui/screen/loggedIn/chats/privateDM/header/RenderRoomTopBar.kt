@@ -45,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -162,12 +164,22 @@ private fun MessengerPeerTopBar(
         }
     val themeId by chatroom.sharedThemeId.collectAsStateWithLifecycle()
     val reactions = accountViewModel.reactionChoices()
+    val topBarColor = if (MaterialTheme.colorScheme.isLight) Color(0xFF075E54) else Color(0xFF062720)
+    val topBarContentColor = Color(0xFFE9FFF7)
+    val topBarActionColor = Color(0xFF55F5C6)
 
     Column {
         ShorterTopAppBar(
             navigationIcon = {
-                IconButton(onClick = nav::popBack) { ArrowBackIcon() }
+                IconButton(onClick = nav::popBack) { ArrowBackIcon(topBarContentColor) }
             },
+            colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = topBarColor,
+                    titleContentColor = topBarContentColor,
+                    navigationIconContentColor = topBarContentColor,
+                    actionIconContentColor = topBarActionColor,
+                ),
             title = {
                 LoadUser(baseUserHex = room.users.first(), accountViewModel) { baseUser ->
                     if (baseUser != null) {
@@ -184,6 +196,7 @@ private fun MessengerPeerTopBar(
                                     .weight(1f)
                                     .clickable { showStrip = !showStrip },
                                 fontWeight = FontWeight.SemiBold,
+                                textColor = topBarContentColor,
                                 accountViewModel = accountViewModel,
                             )
                             if (onVideoCallClick != null) {
@@ -194,7 +207,7 @@ private fun MessengerPeerTopBar(
                                     Icon(
                                         symbol = MaterialSymbols.Videocam,
                                         contentDescription = stringRes(R.string.call_video),
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = topBarActionColor,
                                         modifier = Modifier.size(20.dp),
                                     )
                                 }
@@ -207,7 +220,7 @@ private fun MessengerPeerTopBar(
                                     Icon(
                                         symbol = MaterialSymbols.Call,
                                         contentDescription = stringRes(R.string.call_voice),
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = topBarActionColor,
                                         modifier = Modifier.size(20.dp),
                                     )
                                 }

@@ -209,11 +209,11 @@ fun ChatBubbleLayout(
                 messengerStyle && groupPosition.isConnectedAbove ->
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 8.dp, end = 12.dp, top = 1.dp, bottom = 1.dp)
+                        .padding(start = 6.dp, end = 6.dp, top = 1.dp, bottom = 1.dp)
                 messengerStyle ->
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 1.dp)
+                        .padding(start = 6.dp, end = 6.dp, top = 7.dp, bottom = 1.dp)
                 groupPosition.isConnectedAbove -> ChatPaddingGroupedModifier
                 else -> ChatPaddingModifier
             },
@@ -394,6 +394,7 @@ private fun InnerChatBubble(
             // Jumbo emoji show bare; the scroll-to highlight still tints them.
             color = if (transparentBubble && !highlightActive) Color.Transparent else animatedColor,
             shape = chatBubbleShapeFor(isLoggedInUser, if (innerQuote) ChatGroupPosition.SINGLE else groupPosition),
+            shadowElevation = if (LocalMessengerDmStyle.current && !transparentBubble) 1.dp else 0.dp,
             modifier =
                 clickableModifier.graphicsLayer {
                     scaleX = pressScale
