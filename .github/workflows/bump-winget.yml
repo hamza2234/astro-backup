@@ -38,7 +38,7 @@ jobs:
           is_draft: ${{ github.event.release.draft || 'false' }}
 
       - name: Submit manifest to winget-pkgs
-        uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e  # v2
+        uses: vedantmgoyal9/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54  # v2
         with:
           identifier: VitorPamplona.Amethyst
           version: ${{ github.event.release.tag_name || inputs.tag }}
