@@ -45,7 +45,7 @@ jobs:
 
       - name: crowdin action
         if: ${{ steps.crowdin_creds.outputs.configured == 'true' }}
-        uses: crowdin/github-action@v2
+        uses: crowdin/github-action@v3
         with:
           upload_sources: true
           upload_translations: true
